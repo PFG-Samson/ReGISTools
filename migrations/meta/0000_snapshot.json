@@ -1,0 +1,1100 @@
+{
+  "id": "6f0eae48-b956-4f57-9eb4-8f5a8033ad65",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.assets": {
+      "name": "assets",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "concat('AST-', to_char(nextval('asset_seq'), 'FM0000'))"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "category": {
+          "name": "category",
+          "type": "asset_category",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "serial_number": {
+          "name": "serial_number",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "asset_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'active'"
+        },
+        "condition_score": {
+          "name": "condition_score",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 100
+        },
+        "purchase_date": {
+          "name": "purchase_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "purchase_value": {
+          "name": "purchase_value",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "current_value": {
+          "name": "current_value",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "warranty_expiry": {
+          "name": "warranty_expiry",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "custodian_id": {
+          "name": "custodian_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "location": {
+          "name": "location",
+          "type": "geometry(point)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'{}'::jsonb"
+        },
+        "tags": {
+          "name": "tags",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'{}'"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "assets_custodian_id_users_id_fk": {
+          "name": "assets_custodian_id_users_id_fk",
+          "tableFrom": "assets",
+          "tableTo": "users",
+          "columnsFrom": [
+            "custodian_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "assets_created_by_users_id_fk": {
+          "name": "assets_created_by_users_id_fk",
+          "tableFrom": "assets",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.audit_logs": {
+      "name": "audit_logs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "entity_type": {
+          "name": "entity_type",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_id": {
+          "name": "entity_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "action": {
+          "name": "action",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "change_summary": {
+          "name": "change_summary",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "old_values": {
+          "name": "old_values",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "new_values": {
+          "name": "new_values",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ip_address": {
+          "name": "ip_address",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_agent": {
+          "name": "user_agent",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "timestamp": {
+          "name": "timestamp",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "audit_logs_user_id_users_id_fk": {
+          "name": "audit_logs_user_id_users_id_fk",
+          "tableFrom": "audit_logs",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.documents": {
+      "name": "documents",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "concat('DOC-', to_char(nextval('document_seq'), 'FM0000'))"
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "type": {
+          "name": "type",
+          "type": "document_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "filename": {
+          "name": "filename",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_size": {
+          "name": "file_size",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mime_type": {
+          "name": "mime_type",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "file_path": {
+          "name": "file_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "linked_entity_type": {
+          "name": "linked_entity_type",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "linked_entity_id": {
+          "name": "linked_entity_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "retention_policy": {
+          "name": "retention_policy",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "retention_expiry": {
+          "name": "retention_expiry",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tags": {
+          "name": "tags",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'{}'"
+        },
+        "uploaded_by": {
+          "name": "uploaded_by",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "uploaded_at": {
+          "name": "uploaded_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "documents_uploaded_by_users_id_fk": {
+          "name": "documents_uploaded_by_users_id_fk",
+          "tableFrom": "documents",
+          "tableTo": "users",
+          "columnsFrom": [
+            "uploaded_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sessions": {
+      "name": "sessions",
+      "schema": "",
+      "columns": {
+        "sid": {
+          "name": "sid",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "sess": {
+          "name": "sess",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expire": {
+          "name": "expire",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "IDX_session_expire": {
+          "name": "IDX_session_expire",
+          "columns": [
+            {
+              "expression": "expire",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.staff": {
+      "name": "staff",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "employee_id": {
+          "name": "employee_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "first_name": {
+          "name": "first_name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_name": {
+          "name": "last_name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "phone": {
+          "name": "phone",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "role": {
+          "name": "role",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "department": {
+          "name": "department",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "manager_id": {
+          "name": "manager_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "staff_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'active'"
+        },
+        "start_date": {
+          "name": "start_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "end_date": {
+          "name": "end_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "office_location": {
+          "name": "office_location",
+          "type": "geometry(point)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "office_address": {
+          "name": "office_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "certifications": {
+          "name": "certifications",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'{}'"
+        },
+        "skills": {
+          "name": "skills",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'{}'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "staff_user_id_users_id_fk": {
+          "name": "staff_user_id_users_id_fk",
+          "tableFrom": "staff",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "staff_manager_id_staff_id_fk": {
+          "name": "staff_manager_id_staff_id_fk",
+          "tableFrom": "staff",
+          "tableTo": "staff",
+          "columnsFrom": [
+            "manager_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "staff_employee_id_unique": {
+          "name": "staff_employee_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "employee_id"
+          ]
+        },
+        "staff_email_unique": {
+          "name": "staff_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "first_name": {
+          "name": "first_name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_name": {
+          "name": "last_name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "profile_image_url": {
+          "name": "profile_image_url",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "role": {
+          "name": "role",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'user'"
+        },
+        "department": {
+          "name": "department",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.work_orders": {
+      "name": "work_orders",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "concat('WO-', to_char(nextval('work_order_seq'), 'FM0000'))"
+        },
+        "asset_id": {
+          "name": "asset_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "type": {
+          "name": "type",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "priority": {
+          "name": "priority",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'medium'"
+        },
+        "status": {
+          "name": "status",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'open'"
+        },
+        "assigned_to": {
+          "name": "assigned_to",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "scheduled_date": {
+          "name": "scheduled_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_date": {
+          "name": "completed_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "estimated_cost": {
+          "name": "estimated_cost",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actual_cost": {
+          "name": "actual_cost",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "attachments": {
+          "name": "attachments",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'{}'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "work_orders_asset_id_assets_id_fk": {
+          "name": "work_orders_asset_id_assets_id_fk",
+          "tableFrom": "work_orders",
+          "tableTo": "assets",
+          "columnsFrom": [
+            "asset_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "work_orders_assigned_to_staff_id_fk": {
+          "name": "work_orders_assigned_to_staff_id_fk",
+          "tableFrom": "work_orders",
+          "tableTo": "staff",
+          "columnsFrom": [
+            "assigned_to"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "work_orders_created_by_users_id_fk": {
+          "name": "work_orders_created_by_users_id_fk",
+          "tableFrom": "work_orders",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.workflows": {
+      "name": "workflows",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "concat('WFL-', to_char(nextval('workflow_seq'), 'FM0000'))"
+        },
+        "type": {
+          "name": "type",
+          "type": "workflow_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "workflow_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'pending'"
+        },
+        "priority": {
+          "name": "priority",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'medium'"
+        },
+        "requested_by": {
+          "name": "requested_by",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "assigned_to": {
+          "name": "assigned_to",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "asset_id": {
+          "name": "asset_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "related_data": {
+          "name": "related_data",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'{}'::jsonb"
+        },
+        "approval_threshold": {
+          "name": "approval_threshold",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "estimated_cost": {
+          "name": "estimated_cost",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actual_cost": {
+          "name": "actual_cost",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "scheduled_date": {
+          "name": "scheduled_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_date": {
+          "name": "completed_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "comments": {
+          "name": "comments",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "workflows_requested_by_users_id_fk": {
+          "name": "workflows_requested_by_users_id_fk",
+          "tableFrom": "workflows",
+          "tableTo": "users",
+          "columnsFrom": [
+            "requested_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "workflows_assigned_to_users_id_fk": {
+          "name": "workflows_assigned_to_users_id_fk",
+          "tableFrom": "workflows",
+          "tableTo": "users",
+          "columnsFrom": [
+            "assigned_to"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "workflows_asset_id_assets_id_fk": {
+          "name": "workflows_asset_id_assets_id_fk",
+          "tableFrom": "workflows",
+          "tableTo": "assets",
+          "columnsFrom": [
+            "asset_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.asset_category": {
+      "name": "asset_category",
+      "schema": "public",
+      "values": [
+        "equipment",
+        "vehicle",
+        "it_equipment",
+        "furniture",
+        "building",
+        "infrastructure"
+      ]
+    },
+    "public.asset_status": {
+      "name": "asset_status",
+      "schema": "public",
+      "values": [
+        "active",
+        "inactive",
+        "maintenance",
+        "disposed"
+      ]
+    },
+    "public.document_type": {
+      "name": "document_type",
+      "schema": "public",
+      "values": [
+        "contract",
+        "invoice",
+        "manual",
+        "certificate",
+        "report",
+        "other"
+      ]
+    },
+    "public.staff_status": {
+      "name": "staff_status",
+      "schema": "public",
+      "values": [
+        "active",
+        "inactive",
+        "on_leave"
+      ]
+    },
+    "public.workflow_status": {
+      "name": "workflow_status",
+      "schema": "public",
+      "values": [
+        "pending",
+        "approved",
+        "rejected",
+        "completed"
+      ]
+    },
+    "public.workflow_type": {
+      "name": "workflow_type",
+      "schema": "public",
+      "values": [
+        "purchase",
+        "transfer",
+        "disposal",
+        "maintenance"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

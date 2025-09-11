@@ -1,4 +1,4 @@
-import type { Express, Request } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
@@ -11,7 +11,7 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 
-// Extend Request type to include user
+// Extend Request type to include user from Replit Auth
 interface AuthRequest extends Request {
   user?: {
     claims: {
@@ -20,6 +20,9 @@ interface AuthRequest extends Request {
       first_name?: string;
       last_name?: string;
     };
+    access_token?: string;
+    refresh_token?: string;
+    expires_at?: number;
   };
 }
 
@@ -52,9 +55,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: AuthRequest, res) => {
+  app.get('/api/auth/user', isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user!.claims.sub;
+      const authReq = req as AuthRequest;
+      const userId = authReq.user!.claims.sub;
       const user = await storage.getUser(userId);
       res.json(user);
     } catch (error) {
@@ -118,15 +122,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/assets', isAuthenticated, async (req: AuthRequest, res) => {
+  app.post('/api/assets', isAuthenticated, async (req, res) => {
     try {
+      const authReq = req as AuthRequest;
       const validatedData = insertAssetSchema.parse({
         ...req.body,
-        createdBy: req.user!.claims.sub,
+        createdBy: authReq.user!.claims.sub,
       });
       
       const asset = await storage.createAsset(validatedData);
-      await createAuditLog('asset', asset.id!, 'create', req, undefined, asset);
+      await createAuditLog('asset', asset.id!, 'create', authReq, undefined, asset);
       
       res.status(201).json(asset);
     } catch (error) {
@@ -138,8 +143,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/assets/:id', isAuthenticated, async (req: AuthRequest, res) => {
+  app.put('/api/assets/:id', isAuthenticated, async (req, res) => {
     try {
+      const authReq = req as AuthRequest;
       const oldAsset = await storage.getAsset(req.params.id);
       if (!oldAsset) {
         return res.status(404).json({ message: "Asset not found" });
@@ -148,7 +154,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertAssetSchema.partial().parse(req.body);
       const updatedAsset = await storage.updateAsset(req.params.id, validatedData);
       
-      await createAuditLog('asset', req.params.id, 'update', req, oldAsset, updatedAsset);
+      await createAuditLog('asset', req.params.id, 'update', authReq, oldAsset, updatedAsset);
       
       res.json(updatedAsset);
     } catch (error) {
@@ -160,15 +166,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/assets/:id', isAuthenticated, async (req: AuthRequest, res) => {
+  app.delete('/api/assets/:id', isAuthenticated, async (req, res) => {
     try {
+      const authReq = req as AuthRequest;
       const asset = await storage.getAsset(req.params.id);
       if (!asset) {
         return res.status(404).json({ message: "Asset not found" });
       }
 
       await storage.deleteAsset(req.params.id);
-      await createAuditLog('asset', req.params.id, 'delete', req, asset, undefined);
+      await createAuditLog('asset', req.params.id, 'delete', authReq, asset, undefined);
       
       res.status(204).send();
     } catch (error) {
@@ -205,12 +212,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/staff', isAuthenticated, async (req: AuthRequest, res) => {
+  app.post('/api/staff', isAuthenticated, async (req, res) => {
     try {
+      const authReq = req as AuthRequest;
       const validatedData = insertStaffSchema.parse(req.body);
       const staffMember = await storage.createStaffMember(validatedData);
       
-      await createAuditLog('staff', staffMember.id!, 'create', req, undefined, staffMember);
+      await createAuditLog('staff', staffMember.id!, 'create', authReq, undefined, staffMember);
       
       res.status(201).json(staffMember);
     } catch (error) {
@@ -222,8 +230,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/staff/:id', isAuthenticated, async (req: AuthRequest, res) => {
+  app.put('/api/staff/:id', isAuthenticated, async (req, res) => {
     try {
+      const authReq = req as AuthRequest;
       const oldStaff = await storage.getStaffMember(req.params.id);
       if (!oldStaff) {
         return res.status(404).json({ message: "Staff member not found" });
@@ -232,7 +241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertStaffSchema.partial().parse(req.body);
       const updatedStaff = await storage.updateStaffMember(req.params.id, validatedData);
       
-      await createAuditLog('staff', req.params.id, 'update', req, oldStaff, updatedStaff);
+      await createAuditLog('staff', req.params.id, 'update', authReq, oldStaff, updatedStaff);
       
       res.json(updatedStaff);
     } catch (error) {
@@ -244,15 +253,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/staff/:id', isAuthenticated, async (req: AuthRequest, res) => {
+  app.delete('/api/staff/:id', isAuthenticated, async (req, res) => {
     try {
+      const authReq = req as AuthRequest;
       const staffMember = await storage.getStaffMember(req.params.id);
       if (!staffMember) {
         return res.status(404).json({ message: "Staff member not found" });
       }
 
       await storage.deleteStaffMember(req.params.id);
-      await createAuditLog('staff', req.params.id, 'delete', req, staffMember, undefined);
+      await createAuditLog('staff', req.params.id, 'delete', authReq, staffMember, undefined);
       
       res.status(204).send();
     } catch (error) {
@@ -276,15 +286,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/documents', isAuthenticated, async (req: AuthRequest, res) => {
+  app.post('/api/documents', isAuthenticated, async (req, res) => {
     try {
+      const authReq = req as AuthRequest;
       const validatedData = insertDocumentSchema.parse({
         ...req.body,
-        uploadedBy: req.user!.claims.sub,
+        uploadedBy: authReq.user!.claims.sub,
       });
       
       const document = await storage.createDocument(validatedData);
-      await createAuditLog('document', document.id!, 'create', req, undefined, document);
+      await createAuditLog('document', document.id!, 'create', authReq, undefined, document);
       
       res.status(201).json(document);
     } catch (error) {
@@ -311,15 +322,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/workflows', isAuthenticated, async (req: AuthRequest, res) => {
+  app.post('/api/workflows', isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertWorkflowSchema.parse({
         ...req.body,
-        requestedBy: req.user!.claims.sub,
+        requestedBy: (req as AuthRequest).user!.claims.sub,
       });
       
       const workflow = await storage.createWorkflow(validatedData);
-      await createAuditLog('workflow', workflow.id!, 'create', req, undefined, workflow);
+      await createAuditLog('workflow', workflow.id!, 'create', req as AuthRequest, undefined, workflow);
       
       res.status(201).json(workflow);
     } catch (error) {
@@ -331,7 +342,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/workflows/:id', isAuthenticated, async (req: AuthRequest, res) => {
+  app.put('/api/workflows/:id', isAuthenticated, async (req, res) => {
     try {
       const oldWorkflow = await storage.getWorkflow(req.params.id);
       if (!oldWorkflow) {
@@ -381,11 +392,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/work-orders', isAuthenticated, async (req: AuthRequest, res) => {
+  app.post('/api/work-orders', isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertWorkOrderSchema.parse({
         ...req.body,
-        createdBy: req.user!.claims.sub,
+        createdBy: (req as AuthRequest).user!.claims.sub,
       });
       
       const workOrder = await storage.createWorkOrder(validatedData);
