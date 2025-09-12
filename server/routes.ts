@@ -10,6 +10,8 @@ import {
   insertWorkOrderSchema 
 } from "@shared/schema";
 import { z } from "zod";
+import multer from 'multer';
+import path from 'path';
 
 // Extend Request type to include user from Replit Auth
 interface AuthRequest extends Request {
@@ -25,6 +27,46 @@ interface AuthRequest extends Request {
     expires_at?: number;
   };
 }
+
+// Configure multer for file uploads
+const storage_multer = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    // Generate unique filename with timestamp
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage_multer,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow common document types
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'text/plain',
+      'text/csv'
+    ];
+    
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only documents, images, and text files are allowed.'));
+    }
+  }
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -443,6 +485,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // File upload endpoint with document creation
+  app.post('/api/documents/upload', isAuthenticated, upload.single('file'), async (req, res) => {
+    try {
+      const authReq = req as AuthRequest;
+      
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      // Validate form data
+      const documentData = {
+        title: req.body.title || req.file.originalname.replace(/\.[^/.]+$/, ""),
+        description: req.body.description || '',
+        type: req.body.type || 'other',
+        linkedEntityType: req.body.linkedEntityType || undefined,
+        linkedEntityId: req.body.linkedEntityId || undefined,
+        retentionPolicy: req.body.retentionPolicy || undefined,
+        retentionExpiry: req.body.retentionExpiry ? new Date(req.body.retentionExpiry).toISOString() : undefined,
+        tags: req.body.tags ? req.body.tags.split(',').map((tag: string) => tag.trim()).filter(Boolean) : [],
+        filename: req.file.originalname,
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype,
+        filePath: req.file.path,
+        uploadedBy: authReq.user!.claims.sub,
+      };
+
+      const validatedData = insertDocumentSchema.parse(documentData);
+      const document = await storage.createDocument(validatedData);
+      
+      await createAuditLog('document', document.id!, 'create', authReq, undefined, document);
+      
+      res.status(201).json(document);
+    } catch (error) {
+      console.error("Error uploading document:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to upload document" });
+    }
+  });
+
+  // File download endpoint
+  app.get('/api/documents/:id/download', isAuthenticated, async (req, res) => {
+    try {
+      const document = await storage.getDocument(req.params.id);
+      
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      // Check if file exists
+      const fs = await import('fs');
+      if (!fs.existsSync(document.filePath)) {
+        return res.status(404).json({ message: "File not found on disk" });
+      }
+
+      // Set appropriate headers
+      res.setHeader('Content-Disposition', `attachment; filename="${document.filename}"`);
+      res.setHeader('Content-Type', document.mimeType || 'application/octet-stream');
+      
+      // Stream the file
+      res.sendFile(document.filePath, { root: '.' });
+    } catch (error) {
+      console.error("Error downloading document:", error);
+      res.status(500).json({ message: "Failed to download document" });
+    }
+  });
+
+  // Legacy document creation (for metadata-only documents)
   app.post('/api/documents', isAuthenticated, async (req, res) => {
     try {
       const authReq = req as AuthRequest;

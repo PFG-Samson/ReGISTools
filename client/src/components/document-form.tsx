@@ -50,22 +50,44 @@ export default function DocumentForm({ document, onSuccess }: DocumentFormProps)
 
   const saveDocumentMutation = useMutation({
     mutationFn: async (data: DocumentFormValues) => {
-      const payload = {
-        ...data,
-        tags: data.tags ? data.tags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
-        retentionExpiry: data.retentionExpiry ? new Date(data.retentionExpiry).toISOString() : undefined,
-        // For now, we'll simulate file upload with mock data since actual file upload
-        // would require additional backend setup for file handling
-        filename: selectedFile?.name || document?.filename || 'document.pdf',
-        fileSize: selectedFile?.size || document?.fileSize || 0,
-        mimeType: selectedFile?.type || document?.mimeType || 'application/pdf',
-        filePath: `/uploads/${selectedFile?.name || document?.filename || 'document.pdf'}`,
-      };
-
       if (document) {
+        // Update existing document (metadata only)
+        const payload = {
+          ...data,
+          tags: data.tags ? data.tags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
+          retentionExpiry: data.retentionExpiry ? new Date(data.retentionExpiry).toISOString() : undefined,
+        };
         await apiRequest("PUT", `/api/documents/${document.id}`, payload);
       } else {
-        await apiRequest("POST", "/api/documents", payload);
+        // Create new document with file upload
+        if (!selectedFile) {
+          throw new Error("File is required for new documents");
+        }
+
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('title', data.title);
+        if (data.description) formData.append('description', data.description);
+        formData.append('type', data.type);
+        if (data.linkedEntityType) formData.append('linkedEntityType', data.linkedEntityType);
+        if (data.linkedEntityId) formData.append('linkedEntityId', data.linkedEntityId);
+        if (data.retentionPolicy) formData.append('retentionPolicy', data.retentionPolicy);
+        if (data.retentionExpiry) formData.append('retentionExpiry', data.retentionExpiry);
+        if (data.tags) formData.append('tags', data.tags);
+
+        // Use fetch for file upload instead of apiRequest
+        const response = await fetch('/api/documents/upload', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include', // Include cookies for authentication
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Upload failed');
+        }
+
+        return response.json();
       }
     },
     onSuccess: () => {

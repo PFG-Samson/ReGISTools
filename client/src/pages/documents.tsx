@@ -73,6 +73,42 @@ export default function Documents() {
     setShowDocumentForm(true);
   };
 
+  const handleDownload = async (documentId: string, filename: string) => {
+    try {
+      const response = await fetch(`/api/documents/${documentId}/download`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Download failed');
+      }
+
+      // Create blob and download link
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Success",
+        description: "Document downloaded successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to download document",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(0);
@@ -251,6 +287,7 @@ export default function Documents() {
                               <Button 
                                 size="sm" 
                                 variant="outline"
+                                onClick={() => handleDownload(document.id, document.filename)}
                                 data-testid={`button-download-document-${document.id}`}
                               >
                                 <i className="fas fa-download text-xs"></i>
