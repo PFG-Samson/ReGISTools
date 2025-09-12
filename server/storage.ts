@@ -23,6 +23,35 @@ import {
 import { db } from "./db";
 import { eq, desc, count, like, and, or, sql } from "drizzle-orm";
 
+// Spatial geometry utility functions for PostGIS
+export const spatialUtils = {
+  // Convert GeoJSON to PostGIS geometry
+  geoJsonToGeometry: (geoJson: any) => {
+    if (!geoJson || typeof geoJson !== 'object') return null;
+    return sql`ST_GeomFromGeoJSON(${JSON.stringify(geoJson)})`;
+  },
+
+  // Convert coordinate pair to PostGIS point
+  pointToGeometry: (longitude: number, latitude: number) => {
+    return sql`ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)`;
+  },
+
+  // Convert PostGIS geometry to GeoJSON (for querying)
+  geometryToGeoJson: (columnName: string) => {
+    return sql`ST_AsGeoJSON(${sql.raw(columnName)})::json`;
+  },
+
+  // Convert PostGIS geometry to coordinate pair
+  geometryToCoords: (columnName: string) => {
+    return sql`json_build_object('lng', ST_X(${sql.raw(columnName)}), 'lat', ST_Y(${sql.raw(columnName)}))`;
+  },
+
+  // Find items within radius (in meters)
+  withinDistance: (columnName: string, longitude: number, latitude: number, radiusMeters: number) => {
+    return sql`ST_DWithin(${sql.raw(columnName)}::geography, ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography, ${radiusMeters})`;
+  }
+};
+
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
@@ -89,6 +118,12 @@ export interface IStorage {
     staff: Staff[];
     documents: Document[];
   }>;
+
+  // Spatial operations
+  getAssetsNearLocation(longitude: number, latitude: number, radiusMeters: number): Promise<Asset[]>;
+  getStaffNearLocation(longitude: number, latitude: number, radiusMeters: number): Promise<Staff[]>;
+  updateAssetLocation(id: string, longitude: number, latitude: number): Promise<Asset>;
+  updateStaffLocation(id: string, longitude: number, latitude: number): Promise<Staff>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -190,17 +225,17 @@ export class DatabaseStorage implements IStorage {
         .then(result => result[0].count)
     ]);
 
-    return { staff: staffList, total: totalCount };
+    return { staff: staffList as Staff[], total: totalCount };
   }
 
   async getStaffMember(id: string): Promise<Staff | undefined> {
     const [staffMember] = await db.select().from(staff).where(eq(staff.id, id));
-    return staffMember;
+    return staffMember as Staff | undefined;
   }
 
   async createStaffMember(staffData: InsertStaff): Promise<Staff> {
     const [newStaff] = await db.insert(staff).values(staffData).returning();
-    return newStaff;
+    return newStaff as Staff;
   }
 
   async updateStaffMember(id: string, staffData: Partial<InsertStaff>): Promise<Staff> {
@@ -209,7 +244,7 @@ export class DatabaseStorage implements IStorage {
       .set({ ...staffData, updatedAt: new Date() })
       .where(eq(staff.id, id))
       .returning();
-    return updatedStaff;
+    return updatedStaff as Staff;
   }
 
   async deleteStaffMember(id: string): Promise<void> {
@@ -444,10 +479,109 @@ export class DatabaseStorage implements IStorage {
     ]);
 
     return {
-      assets: assetResults,
-      staff: staffResults,
-      documents: documentResults,
+      assets: assetResults as Asset[],
+      staff: staffResults as Staff[],
+      documents: documentResults as Document[],
     };
+  }
+
+  // Spatial operations
+  async getAssetsNearLocation(longitude: number, latitude: number, radiusMeters: number): Promise<Asset[]> {
+    const nearbyAssets = await db
+      .select({
+        id: assets.id,
+        name: assets.name,
+        description: assets.description,
+        category: assets.category,
+        serialNumber: assets.serialNumber,
+        status: assets.status,
+        conditionScore: assets.conditionScore,
+        purchaseDate: assets.purchaseDate,
+        purchaseValue: assets.purchaseValue,
+        currentValue: assets.currentValue,
+        warrantyExpiry: assets.warrantyExpiry,
+        custodianId: assets.custodianId,
+        location: spatialUtils.geometryToGeoJson('location'),
+        address: assets.address,
+        metadata: assets.metadata,
+        tags: assets.tags,
+        createdBy: assets.createdBy,
+        createdAt: assets.createdAt,
+        updatedAt: assets.updatedAt,
+        distance: sql`ST_Distance(location::geography, ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography)`.as('distance')
+      })
+      .from(assets)
+      .where(
+        and(
+          sql`location IS NOT NULL`,
+          spatialUtils.withinDistance('location', longitude, latitude, radiusMeters)
+        )
+      )
+      .orderBy(sql`distance`);
+
+    return nearbyAssets as any;
+  }
+
+  async getStaffNearLocation(longitude: number, latitude: number, radiusMeters: number): Promise<Staff[]> {
+    const nearbyStaff = await db
+      .select({
+        id: staff.id,
+        userId: staff.userId,
+        employeeId: staff.employeeId,
+        firstName: staff.firstName,
+        lastName: staff.lastName,
+        email: staff.email,
+        phone: staff.phone,
+        role: staff.role,
+        department: staff.department,
+        managerId: staff.managerId,
+        status: staff.status,
+        startDate: staff.startDate,
+        endDate: staff.endDate,
+        officeLocation: spatialUtils.geometryToGeoJson('office_location'),
+        officeAddress: staff.officeAddress,
+        certifications: staff.certifications,
+        skills: staff.skills,
+        createdAt: staff.createdAt,
+        updatedAt: staff.updatedAt,
+        distance: sql`ST_Distance(office_location::geography, ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography)`.as('distance')
+      })
+      .from(staff)
+      .where(
+        and(
+          sql`office_location IS NOT NULL`,
+          spatialUtils.withinDistance('office_location', longitude, latitude, radiusMeters)
+        )
+      )
+      .orderBy(sql`distance`);
+
+    return nearbyStaff as any;
+  }
+
+  async updateAssetLocation(id: string, longitude: number, latitude: number): Promise<Asset> {
+    const [updatedAsset] = await db
+      .update(assets)
+      .set({
+        location: spatialUtils.pointToGeometry(longitude, latitude),
+        updatedAt: new Date()
+      })
+      .where(eq(assets.id, id))
+      .returning();
+
+    return updatedAsset as Asset;
+  }
+
+  async updateStaffLocation(id: string, longitude: number, latitude: number): Promise<Staff> {
+    const [updatedStaff] = await db
+      .update(staff)
+      .set({
+        officeLocation: spatialUtils.pointToGeometry(longitude, latitude),
+        updatedAt: new Date()
+      })
+      .where(eq(staff.id, id))
+      .returning();
+
+    return updatedStaff as Staff;
   }
 }
 

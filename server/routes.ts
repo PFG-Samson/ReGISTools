@@ -94,6 +94,163 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Spatial search endpoints
+  app.get('/api/spatial/assets', isAuthenticated, async (req, res) => {
+    try {
+      const { lng, lat, radius } = req.query;
+      if (!lng || !lat || !radius) {
+        return res.status(400).json({ message: "longitude, latitude, and radius are required" });
+      }
+      
+      const longitude = parseFloat(lng as string);
+      const latitude = parseFloat(lat as string);
+      const radiusMeters = parseFloat(radius as string);
+      
+      // Validate coordinates and radius bounds
+      if (isNaN(longitude) || isNaN(latitude) || isNaN(radiusMeters)) {
+        return res.status(400).json({ message: "Invalid coordinate or radius values" });
+      }
+      
+      if (longitude < -180 || longitude > 180) {
+        return res.status(400).json({ message: "Longitude must be between -180 and 180" });
+      }
+      
+      if (latitude < -90 || latitude > 90) {
+        return res.status(400).json({ message: "Latitude must be between -90 and 90" });
+      }
+      
+      if (radiusMeters <= 0 || radiusMeters > 100000) {
+        return res.status(400).json({ message: "Radius must be between 0 and 100,000 meters" });
+      }
+      
+      const nearbyAssets = await storage.getAssetsNearLocation(longitude, latitude, radiusMeters);
+      res.json(nearbyAssets);
+    } catch (error) {
+      console.error("Error finding nearby assets:", error);
+      res.status(500).json({ message: "Failed to find nearby assets" });
+    }
+  });
+
+  app.get('/api/spatial/staff', isAuthenticated, async (req, res) => {
+    try {
+      const { lng, lat, radius } = req.query;
+      if (!lng || !lat || !radius) {
+        return res.status(400).json({ message: "longitude, latitude, and radius are required" });
+      }
+      
+      const longitude = parseFloat(lng as string);
+      const latitude = parseFloat(lat as string);
+      const radiusMeters = parseFloat(radius as string);
+      
+      // Validate coordinates and radius bounds
+      if (isNaN(longitude) || isNaN(latitude) || isNaN(radiusMeters)) {
+        return res.status(400).json({ message: "Invalid coordinate or radius values" });
+      }
+      
+      if (longitude < -180 || longitude > 180) {
+        return res.status(400).json({ message: "Longitude must be between -180 and 180" });
+      }
+      
+      if (latitude < -90 || latitude > 90) {
+        return res.status(400).json({ message: "Latitude must be between -90 and 90" });
+      }
+      
+      if (radiusMeters <= 0 || radiusMeters > 100000) {
+        return res.status(400).json({ message: "Radius must be between 0 and 100,000 meters" });
+      }
+      
+      const nearbyStaff = await storage.getStaffNearLocation(longitude, latitude, radiusMeters);
+      res.json(nearbyStaff);
+    } catch (error) {
+      console.error("Error finding nearby staff:", error);
+      res.status(500).json({ message: "Failed to find nearby staff" });
+    }
+  });
+
+  app.put('/api/assets/:id/location', isAuthenticated, async (req, res) => {
+    try {
+      const authReq = req as AuthRequest;
+      
+      // Validate request body with Zod
+      const locationSchema = z.object({
+        longitude: z.number().min(-180).max(180),
+        latitude: z.number().min(-90).max(90)
+      });
+      
+      const validatedData = locationSchema.parse(req.body);
+      
+      // Check if asset exists and user has permission
+      const existingAsset = await storage.getAsset(req.params.id);
+      if (!existingAsset) {
+        return res.status(404).json({ message: "Asset not found" });
+      }
+      
+      // Basic authorization: user must be the custodian or creator of the asset
+      const userId = authReq.user!.claims.sub;
+      if (existingAsset.custodianId !== userId && existingAsset.createdBy !== userId) {
+        return res.status(403).json({ message: "You don't have permission to update this asset's location" });
+      }
+      
+      const asset = await storage.updateAssetLocation(req.params.id, validatedData.longitude, validatedData.latitude);
+      
+      // Audit log the location update
+      await createAuditLog('asset', req.params.id, 'location_update', authReq, 
+        { location: existingAsset.location }, 
+        { location: { longitude: validatedData.longitude, latitude: validatedData.latitude } }
+      );
+      
+      res.json(asset);
+    } catch (error) {
+      console.error("Error updating asset location:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update asset location" });
+    }
+  });
+
+  app.put('/api/staff/:id/location', isAuthenticated, async (req, res) => {
+    try {
+      const authReq = req as AuthRequest;
+      
+      // Validate request body with Zod
+      const locationSchema = z.object({
+        longitude: z.number().min(-180).max(180),
+        latitude: z.number().min(-90).max(90)
+      });
+      
+      const validatedData = locationSchema.parse(req.body);
+      
+      // Check if staff member exists and user has permission
+      const existingStaff = await storage.getStaffMember(req.params.id);
+      if (!existingStaff) {
+        return res.status(404).json({ message: "Staff member not found" });
+      }
+      
+      // Authorization: user can only update their own location or if they're a manager
+      const userId = authReq.user!.claims.sub;
+      if (existingStaff.userId !== userId) {
+        return res.status(403).json({ message: "You can only update your own office location" });
+      }
+      
+      const staff = await storage.updateStaffLocation(req.params.id, validatedData.longitude, validatedData.latitude);
+      
+      // Audit log the location update
+      await createAuditLog('staff', req.params.id, 'location_update', authReq, 
+        { officeLocation: existingStaff.officeLocation }, 
+        { officeLocation: { longitude: validatedData.longitude, latitude: validatedData.latitude } }
+      );
+      
+      res.json(staff);
+    } catch (error) {
+      console.error("Error updating staff location:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update staff location" });
+    }
+  });
+
   // Asset routes
   app.get('/api/assets', isAuthenticated, async (req, res) => {
     try {
@@ -352,7 +509,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertWorkflowSchema.partial().parse(req.body);
       const updatedWorkflow = await storage.updateWorkflow(req.params.id, validatedData);
       
-      await createAuditLog('workflow', req.params.id, 'update', req, oldWorkflow, updatedWorkflow);
+      await createAuditLog('workflow', req.params.id, 'update', req as AuthRequest, oldWorkflow, updatedWorkflow);
       
       res.json(updatedWorkflow);
     } catch (error) {
@@ -400,7 +557,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       const workOrder = await storage.createWorkOrder(validatedData);
-      await createAuditLog('work_order', workOrder.id!, 'create', req, undefined, workOrder);
+      await createAuditLog('work_order', workOrder.id!, 'create', req as AuthRequest, undefined, workOrder);
       
       res.status(201).json(workOrder);
     } catch (error) {
